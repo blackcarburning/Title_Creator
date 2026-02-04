@@ -151,27 +151,27 @@ def setup_ui(self):
         font_combo.pack(side=tk.LEFT, padx=5)
         font_combo.bind("<<ComboboxSelected>>", lambda e: self.on_font_change())
         
-ttk.Label(row1, text="Size:").pack(side=tk.LEFT, padx=(15, 5))
+        ttk.Label(row1, text="Size:").pack(side=tk.LEFT, padx=(15, 5))
         self.size_var = tk.IntVar(value=self.font_size)
         size_spin = ttk.Spinbox(row1, from_=8, to=500, textvariable=self.size_var, width=5, command=self.on_size_change)
         size_spin.pack(side=tk.LEFT, padx=5)
         size_spin.bind("<Return>", lambda e: self.on_size_change())
         
-ttk.Label(row1, text="Color:").pack(side=tk.LEFT, padx=(15, 5))
+        ttk.Label(row1, text="Color:").pack(side=tk.LEFT, padx=(15, 5))
         self.color_btn = tk.Button(row1, width=4, bg=self.font_color, command=self.pick_color)
         self.color_btn.pack(side=tk.LEFT, padx=5)
         
         self.dropper_btn = tk.Button(row1, text="Dropper", command=self.activate_dropper, width=7)
         self.dropper_btn.pack(side=tk.LEFT, padx=5)
         
-tk.Button(row1, text="Export PNG", command=self.export_png, font=("Arial", 10, "bold"), 
+        tk.Button(row1, text="Export PNG", command=self.export_png, font=("Arial", 10, "bold"), 
                   bg="#4CAF50", fg="white", width=10).pack(side=tk.RIGHT, padx=5)
         
         # Row 2: Alignment, spacing, flip options
         row2 = ttk.Frame(controls)
         row2.pack(fill=tk.X, pady=2)
         
-ttk.Label(row2, text="Align:").pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Label(row2, text="Align:").pack(side=tk.LEFT, padx=(0, 5))
         self.align_var = tk.StringVar(value=self.text_align)
         align_frame = ttk.Frame(row2)
         align_frame.pack(side=tk.LEFT, padx=5)
@@ -184,13 +184,13 @@ ttk.Label(row2, text="Align:").pack(side=tk.LEFT, padx=(0, 5))
         self.align_right_btn.pack(side=tk.LEFT)
         self.update_align_buttons()
         
-ttk.Label(row2, text="Line Spacing:").pack(side=tk.LEFT, padx=(15, 5))
+        ttk.Label(row2, text="Line Spacing:").pack(side=tk.LEFT, padx=(15, 5))
         self.spacing_var = tk.DoubleVar(value=self.line_spacing)
         spacing_spin = ttk.Spinbox(row2, from_=0.5, to=3.0, increment=0.1, textvariable=self.spacing_var, width=5, command=self.on_spacing_change)
         spacing_spin.pack(side=tk.LEFT, padx=5)
         spacing_spin.bind("<Return>", lambda e: self.on_spacing_change())
         
-ttk.Separator(row2, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=15, fill=tk.Y)
+        ttk.Separator(row2, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=15, fill=tk.Y)
         
         self.flip_h_btn = tk.Button(row2, text="Flip H", command=self.toggle_flip_h, width=6)
         self.flip_h_btn.pack(side=tk.LEFT, padx=5)
@@ -198,12 +198,12 @@ ttk.Separator(row2, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=15, fill=tk.Y)
         self.vertical_btn = tk.Button(row2, text="Vertical", command=self.toggle_vertical, width=7)
         self.vertical_btn.pack(side=tk.LEFT, padx=5)
         
-ttk.Button(row2, text="Center", command=self.center_text).pack(side=tk.LEFT, padx=15)
+        ttk.Button(row2, text="Center", command=self.center_text).pack(side=tk.LEFT, padx=15)
         
         # Morse code buttons
         ttk.Separator(row2, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=15, fill=tk.Y)
         
-tk.Button(row2, text="Text→Morse", command=self.convert_to_morse, width=10, 
+        tk.Button(row2, text="Text→Morse", command=self.convert_to_morse, width=10, 
                   bg="#2196F3", fg="white").pack(side=tk.LEFT, padx=5)
         tk.Button(row2, text="Morse→Text", command=self.convert_from_morse, width=10,
                   bg="#FF9800", fg="white").pack(side=tk.LEFT, padx=5)
@@ -212,9 +212,9 @@ tk.Button(row2, text="Text→Morse", command=self.convert_to_morse, width=10,
         row3 = ttk.Frame(controls)
         row3.pack(fill=tk.X, pady=5)
         
-ttk.Label(row3, text="Text:").pack(side=tk.LEFT, padx=(0, 5), anchor=tk.N)
+        ttk.Label(row3, text="Text:").pack(side=tk.LEFT, padx=(0, 5), anchor=tk.N)
         
-text_frame = ttk.Frame(row3)
+        text_frame = ttk.Frame(row3)
         text_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
         
         self.text_entry = tk.Text(text_frame, height=4, width=80, wrap=tk.WORD)
@@ -415,7 +415,7 @@ def update_canvas(self):
                     tags="text_element"
                 )
         
-bbox = self.canvas.bbox("text_element")
+        bbox = self.canvas.bbox("text_element")
         if bbox:
             x1, y1, x2, y2 = bbox
             padding = 5;
@@ -425,7 +425,7 @@ bbox = self.canvas.bbox("text_element")
                 outline="#00AAFF", width=2, dash=(5, 5), tags="text_box"
             )
             
-handle_size = 8
+            handle_size = 8
             handles = [
                 (x1 - padding, y1 - padding, "nw"),
                 (x2 + padding, y1 - padding, "ne"),
@@ -464,7 +464,7 @@ def on_mouse_down(self, event):
         if self.dropper_active:
             return;
         
-cx = event.x;
+        cx = event.x;
         cy = event.y;
         
         items = self.canvas.find_overlapping(cx-5, cy-5, cx+5, cy+5);
@@ -492,7 +492,7 @@ def on_mouse_drag(self, event):
         if self.dropper_active:
             return;
         
-cx = event.x;
+        cx = event.x;
         cy = event.y;
         
         if self.dragging:
@@ -504,7 +504,7 @@ cx = event.x;
             
             self.update_canvas();
             
-elif self.resizing:
+        elif self.resizing:
             dx = cx - self.drag_start_x;
             dy = cy - self.drag_start_y;
             
