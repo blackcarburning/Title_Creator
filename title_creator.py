@@ -5,6 +5,54 @@ import os
 import json
 
 
+# International Morse Code reference
+MORSE_CODE = {
+    'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.',
+    'G': '--.', 'H': '....', 'I': '..', 'J': '.---', 'K': '-.-', 'L': '.-..',
+    'M': '--', 'N': '-.', 'O': '---', 'P': '.--.', 'Q': '--.-', 'R': '.-.',
+    'S': '...', 'T': '-', 'U': '..-', 'V': '...-', 'W': '.--', 'X': '-..-',
+    'Y': '-.--', 'Z': '--..',
+    '0': '-----', '1': '.----', '2': '..---', '3': '...--', '4': '....-',
+    '5': '.....', '6': '-....', '7': '--...', '8': '---..', '9': '----.',
+    '.': '.-.-.-', ',': '--..--', '?': '..--..', "'": '.----.', '!': '-.-.--',
+    '/': '-..-.', '(': '-.--.', ')': '-.--.-', '&': '.-...', ':': '---...',
+    ';': '-.-.-.', '=': '-...-', '+': '.-.-.', '-': '-....-', '_': '..--.-',
+    '"': '.-..-.', '$': '...-..-', '@': '.--.-.'
+}
+
+# Reverse mapping for Morse to text
+MORSE_TO_TEXT = {v: k for k, v in MORSE_CODE.items()}
+
+def text_to_morse(text):
+    """Convert text to Morse code. Words separated by /"""
+    result = []
+    for word in text.upper().split():
+        morse_word = []
+        for char in word:
+            if char in MORSE_CODE:
+                morse_word.append(MORSE_CODE[char])
+        if morse_word:
+            result.append(' '.join(morse_word))
+    return ' / '.join(result)
+
+def morse_to_text(morse):
+    """Convert Morse code to text. Words separated by /"""
+    result = []
+    words = morse.strip().split(' / ')
+    for word in words:
+        text_word = []
+        chars = word.strip().split()
+        for char in chars:
+            char = char.strip()
+            if char in MORSE_TO_TEXT:
+                text_word.append(MORSE_TO_TEXT[char])
+            elif char:
+                text_word.append('?')  # Unknown character
+        if text_word:
+            result.append(''.join(text_word))
+    return ' '.join(result)
+
+
 class TextOverlayApp:
     def __init__(self, root):
         self.root = root
@@ -48,7 +96,7 @@ class TextOverlayApp:
         self.root.after(100, self.fit_canvas)
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         
-    def load_config(self):
+def load_config(self):
         """Load saved configuration"""
         try:
             if os.path.exists(self.config_file):
@@ -62,7 +110,7 @@ class TextOverlayApp:
         except:
             pass
             
-    def save_config(self):
+def save_config(self):
         """Save configuration"""
         try:
             config = {
@@ -77,12 +125,12 @@ class TextOverlayApp:
         except:
             pass
             
-    def on_close(self):
+def on_close(self):
         """Handle window close"""
         self.save_config()
         self.root.destroy()
         
-    def setup_ui(self):
+def setup_ui(self):
         # Main container
         main = ttk.Frame(self.root, padding="5")
         main.pack(fill=tk.BOTH, expand=True)
@@ -103,27 +151,27 @@ class TextOverlayApp:
         font_combo.pack(side=tk.LEFT, padx=5)
         font_combo.bind("<<ComboboxSelected>>", lambda e: self.on_font_change())
         
-        ttk.Label(row1, text="Size:").pack(side=tk.LEFT, padx=(15, 5))
+ttk.Label(row1, text="Size:").pack(side=tk.LEFT, padx=(15, 5))
         self.size_var = tk.IntVar(value=self.font_size)
         size_spin = ttk.Spinbox(row1, from_=8, to=500, textvariable=self.size_var, width=5, command=self.on_size_change)
         size_spin.pack(side=tk.LEFT, padx=5)
         size_spin.bind("<Return>", lambda e: self.on_size_change())
         
-        ttk.Label(row1, text="Color:").pack(side=tk.LEFT, padx=(15, 5))
+ttk.Label(row1, text="Color:").pack(side=tk.LEFT, padx=(15, 5))
         self.color_btn = tk.Button(row1, width=4, bg=self.font_color, command=self.pick_color)
         self.color_btn.pack(side=tk.LEFT, padx=5)
         
         self.dropper_btn = tk.Button(row1, text="Dropper", command=self.activate_dropper, width=7)
         self.dropper_btn.pack(side=tk.LEFT, padx=5)
         
-        tk.Button(row1, text="Export PNG", command=self.export_png, font=("Arial", 10, "bold"), 
+tk.Button(row1, text="Export PNG", command=self.export_png, font=("Arial", 10, "bold"), 
                   bg="#4CAF50", fg="white", width=10).pack(side=tk.RIGHT, padx=5)
         
         # Row 2: Alignment, spacing, flip options
         row2 = ttk.Frame(controls)
         row2.pack(fill=tk.X, pady=2)
         
-        ttk.Label(row2, text="Align:").pack(side=tk.LEFT, padx=(0, 5))
+ttk.Label(row2, text="Align:").pack(side=tk.LEFT, padx=(0, 5))
         self.align_var = tk.StringVar(value=self.text_align)
         align_frame = ttk.Frame(row2)
         align_frame.pack(side=tk.LEFT, padx=5)
@@ -136,13 +184,13 @@ class TextOverlayApp:
         self.align_right_btn.pack(side=tk.LEFT)
         self.update_align_buttons()
         
-        ttk.Label(row2, text="Line Spacing:").pack(side=tk.LEFT, padx=(15, 5))
+ttk.Label(row2, text="Line Spacing:").pack(side=tk.LEFT, padx=(15, 5))
         self.spacing_var = tk.DoubleVar(value=self.line_spacing)
         spacing_spin = ttk.Spinbox(row2, from_=0.5, to=3.0, increment=0.1, textvariable=self.spacing_var, width=5, command=self.on_spacing_change)
         spacing_spin.pack(side=tk.LEFT, padx=5)
         spacing_spin.bind("<Return>", lambda e: self.on_spacing_change())
         
-        ttk.Separator(row2, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=15, fill=tk.Y)
+ttk.Separator(row2, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=15, fill=tk.Y)
         
         self.flip_h_btn = tk.Button(row2, text="Flip H", command=self.toggle_flip_h, width=6)
         self.flip_h_btn.pack(side=tk.LEFT, padx=5)
@@ -150,15 +198,23 @@ class TextOverlayApp:
         self.vertical_btn = tk.Button(row2, text="Vertical", command=self.toggle_vertical, width=7)
         self.vertical_btn.pack(side=tk.LEFT, padx=5)
         
-        ttk.Button(row2, text="Center", command=self.center_text).pack(side=tk.LEFT, padx=15)
+ttk.Button(row2, text="Center", command=self.center_text).pack(side=tk.LEFT, padx=15)
+        
+        # Morse code buttons
+        ttk.Separator(row2, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=15, fill=tk.Y)
+        
+tk.Button(row2, text="Text→Morse", command=self.convert_to_morse, width=10, 
+                  bg="#2196F3", fg="white").pack(side=tk.LEFT, padx=5)
+        tk.Button(row2, text="Morse→Text", command=self.convert_from_morse, width=10,
+                  bg="#FF9800", fg="white").pack(side=tk.LEFT, padx=5)
         
         # Row 3: Text input (multi-line)
         row3 = ttk.Frame(controls)
         row3.pack(fill=tk.X, pady=5)
         
-        ttk.Label(row3, text="Text:").pack(side=tk.LEFT, padx=(0, 5), anchor=tk.N)
+ttk.Label(row3, text="Text:").pack(side=tk.LEFT, padx=(0, 5), anchor=tk.N)
         
-        text_frame = ttk.Frame(row3)
+text_frame = ttk.Frame(row3)
         text_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
         
         self.text_entry = tk.Text(text_frame, height=4, width=80, wrap=tk.WORD)
@@ -197,21 +253,51 @@ class TextOverlayApp:
         self.canvas.bind("<B1-Motion>", self.on_mouse_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_mouse_up)
         self.canvas.bind("<Double-Button-1>", self.on_double_click)
-        
-    def set_align(self, align):
+    
+def convert_to_morse(self):
+        """Convert current text to Morse code"""
+        current_text = self.text_entry.get("1.0", tk.END).strip()
+        if current_text:
+            # Convert each line separately
+            lines = current_text.split('\n')
+            morse_lines = [text_to_morse(line) for line in lines]
+            morse_text = '\n'.join(morse_lines)
+            
+            self.text_entry.delete("1.0", tk.END)
+            self.text_entry.insert("1.0", morse_text)
+            self.on_text_change()
+            self.dropper_status.set("Converted to Morse code")
+            self.root.after(2000, lambda: self.dropper_status.set(""))
+    
+def convert_from_morse(self):
+        """Convert Morse code back to text"""
+        current_text = self.text_entry.get("1.0", tk.END).strip()
+        if current_text:
+            # Convert each line separately
+            lines = current_text.split('\n')
+            text_lines = [morse_to_text(line) for line in lines]
+            plain_text = '\n'.join(text_lines)
+            
+            self.text_entry.delete("1.0", tk.END)
+            self.text_entry.insert("1.0", plain_text)
+            self.on_text_change()
+            self.dropper_status.set("Converted from Morse code")
+            self.root.after(2000, lambda: self.dropper_status.set(""))
+    
+def set_align(self, align):
         self.text_align = align
         self.update_align_buttons()
         self.save_config()
         self.update_canvas()
         
-    def update_align_buttons(self):
+def update_align_buttons(self):
         for btn, val in [(self.align_left_btn, "left"), (self.align_center_btn, "center"), (self.align_right_btn, "right")]:
             if self.text_align == val:
                 btn.config(relief=tk.SUNKEN, bg="#AADDFF")
             else:
                 btn.config(relief=tk.RAISED, bg="SystemButtonFace")
                 
-    def on_spacing_change(self):
+def on_spacing_change(self):
         try:
             self.line_spacing = float(self.spacing_var.get())
             self.line_spacing = max(0.5, min(3.0, self.line_spacing))
@@ -220,7 +306,7 @@ class TextOverlayApp:
         except:
             pass
         
-    def on_resize(self, event=None):
+def on_resize(self, event=None):
         if hasattr(self, '_resize_after_id') and self._resize_after_id is not None:
             try:
                 self.root.after_cancel(self._resize_after_id)
@@ -228,7 +314,7 @@ class TextOverlayApp:
                 pass
         self._resize_after_id = self.root.after(50, self.fit_canvas)
         
-    def fit_canvas(self):
+def fit_canvas(self):
         self.canvas_container.update_idletasks()
         available_width = self.canvas_container.winfo_width() - 20
         available_height = self.canvas_container.winfo_height() - 20
@@ -247,7 +333,7 @@ class TextOverlayApp:
         
         self.update_canvas()
         
-    def draw_checkerboard(self):
+def draw_checkerboard(self):
         self.canvas.delete("checker")
         checker_size = max(10, int(20 * self.scale))
         
@@ -260,7 +346,7 @@ class TextOverlayApp:
                 self.canvas.create_rectangle(x, y, x + checker_size, y + checker_size, 
                                               fill=color, outline="", tags="checker")
         
-    def update_canvas(self):
+def update_canvas(self):
         self.draw_checkerboard()
         
         self.canvas.delete("text_element")
@@ -329,17 +415,17 @@ class TextOverlayApp:
                     tags="text_element"
                 )
         
-        bbox = self.canvas.bbox("text_element")
+bbox = self.canvas.bbox("text_element")
         if bbox:
             x1, y1, x2, y2 = bbox
-            padding = 5
+            padding = 5;
             
             self.canvas.create_rectangle(
                 x1 - padding, y1 - padding, x2 + padding, y2 + padding,
                 outline="#00AAFF", width=2, dash=(5, 5), tags="text_box"
             )
             
-            handle_size = 8
+handle_size = 8
             handles = [
                 (x1 - padding, y1 - padding, "nw"),
                 (x2 + padding, y1 - padding, "ne"),
@@ -362,178 +448,178 @@ class TextOverlayApp:
         line_count = len(self.text_content.split('\n'))
         self.pos_var.set(f"Position: X={self.text_x}, Y={self.text_y} | Size: {self.font_size}pt | Lines: {line_count}{status}")
         
-    def toggle_flip_h(self):
+def toggle_flip_h(self):
         self.flip_h = not self.flip_h
         self.flip_h_btn.config(relief=tk.SUNKEN if self.flip_h else tk.RAISED,
                                bg="#AADDFF" if self.flip_h else "SystemButtonFace")
         self.update_canvas()
         
-    def toggle_vertical(self):
+def toggle_vertical(self):
         self.vertical_stack = not self.vertical_stack
         self.vertical_btn.config(relief=tk.SUNKEN if self.vertical_stack else tk.RAISED,
                                  bg="#AADDFF" if self.vertical_stack else "SystemButtonFace")
         self.update_canvas()
         
-    def on_mouse_down(self, event):
+def on_mouse_down(self, event):
         if self.dropper_active:
-            return
-            
-        cx = event.x
-        cy = event.y
+            return;
         
-        items = self.canvas.find_overlapping(cx-5, cy-5, cx+5, cy+5)
+cx = event.x;
+        cy = event.y;
+        
+        items = self.canvas.find_overlapping(cx-5, cy-5, cx+5, cy+5);
         for item in items:
-            tags = self.canvas.gettags(item)
+            tags = self.canvas.gettags(item);
             if "resize_handle" in tags:
-                self.resizing = True
+                self.resizing = True;
                 for tag in tags:
                     if tag in ["nw", "ne", "sw", "se"]:
-                        self.resize_handle = tag
-                        break
-                self.drag_start_x = cx
-                self.drag_start_y = cy
-                return
+                        self.resize_handle = tag;
+                        break;
+                self.drag_start_x = cx;
+                self.drag_start_y = cy;
+                return;
         
-        text_bbox = self.canvas.bbox("text_element")
+        text_bbox = self.canvas.bbox("text_element");
         if text_bbox:
-            x1, y1, x2, y2 = text_bbox
+            x1, y1, x2, y2 = text_bbox;
             if x1 <= cx <= x2 and y1 <= cy <= y2:
-                self.dragging = True
-                self.drag_start_x = cx - (self.text_x * self.scale)
-                self.drag_start_y = cy - (self.text_y * self.scale)
-                
-    def on_mouse_drag(self, event):
+                self.dragging = True;
+                self.drag_start_x = cx - (self.text_x * self.scale);
+                self.drag_start_y = cy - (self.text_y * self.scale);
+    
+def on_mouse_drag(self, event):
         if self.dropper_active:
-            return
-            
-        cx = event.x
-        cy = event.y
+            return;
+        
+cx = event.x;
+        cy = event.y;
         
         if self.dragging:
-            self.text_x = int((cx - self.drag_start_x) / self.scale)
-            self.text_y = int((cy - self.drag_start_y) / self.scale)
+            self.text_x = int((cx - self.drag_start_x) / self.scale);
+            self.text_y = int((cy - self.drag_start_y) / self.scale);
             
-            self.text_x = max(0, min(1920, self.text_x))
-            self.text_y = max(0, min(1080, self.text_y))
+            self.text_x = max(0, min(1920, self.text_x));
+            self.text_y = max(0, min(1080, self.text_y));
             
-            self.update_canvas()
+            self.update_canvas();
             
-        elif self.resizing:
-            dx = cx - self.drag_start_x
-            dy = cy - self.drag_start_y
+elif self.resizing:
+            dx = cx - self.drag_start_x;
+            dy = cy - self.drag_start_y;
             
-            distance = (dx + dy) / 2
+            distance = (dx + dy) / 2;
             
             if self.resize_handle in ["se", "ne"]:
-                new_size = self.font_size + int(distance / (5 * self.scale))
+                new_size = self.font_size + int(distance / (5 * self.scale));
             else:
-                new_size = self.font_size - int(distance / (5 * self.scale))
+                new_size = self.font_size - int(distance / (5 * self.scale));
             
-            new_size = max(8, min(500, new_size))
+            new_size = max(8, min(500, new_size));
             
             if new_size != self.font_size:
-                self.font_size = new_size
-                self.size_var.set(self.font_size)
-                self.drag_start_x = cx
-                self.drag_start_y = cy
-                self.update_canvas()
+                self.font_size = new_size;
+                self.size_var.set(self.font_size);
+                self.drag_start_x = cx;
+                self.drag_start_y = cy;
+                self.update_canvas();
                 
-    def on_mouse_up(self, event):
-        self.dragging = False
-        self.resizing = False
-        self.resize_handle = None
+def on_mouse_up(self, event):
+        self.dragging = False;
+        self.resizing = False;
+        self.resize_handle = None;
         
-    def on_double_click(self, event):
-        self.text_entry.focus_set()
+def on_double_click(self, event):
+        self.text_entry.focus_set();
         
-    def on_font_change(self):
-        self.font_family = self.font_var.get()
-        self.save_config()
-        self.update_canvas()
+def on_font_change(self):
+        self.font_family = self.font_var.get();
+        self.save_config();
+        self.update_canvas();
         
-    def on_size_change(self):
+def on_size_change(self):
         try:
-            self.font_size = int(self.size_var.get())
-            self.font_size = max(8, min(500, self.font_size))
-            self.save_config()
-            self.update_canvas()
+            self.font_size = int(self.size_var.get());
+            self.font_size = max(8, min(500, self.font_size));
+            self.save_config();
+            self.update_canvas();
         except:
-            pass
+            pass;
             
-    def on_text_change(self):
-        self.text_content = self.text_entry.get("1.0", tk.END).rstrip('\n')
-        self.update_canvas()
+def on_text_change(self):
+        self.text_content = self.text_entry.get("1.0", tk.END).rstrip('\n');
+        self.update_canvas();
         
-    def center_text(self):
-        self.text_x = 960
-        self.text_y = 540
-        self.update_canvas()
+def center_text(self):
+        self.text_x = 960;
+        self.text_y = 540;
+        self.update_canvas();
         
-    def pick_color(self):
-        color = colorchooser.askcolor(color=self.font_color, title="Choose Text Color")
+def pick_color(self):
+        color = colorchooser.askcolor(color=self.font_color, title="Choose Text Color");
         if color[1]:
-            self.font_color = color[1]
-            self.color_btn.config(bg=self.font_color)
-            self.save_config()
-            self.update_canvas()
-            
-    def activate_dropper(self):
-        self.dropper_active = True
-        self.dropper_status.set("Click anywhere on screen to pick color...")
-        self.dropper_btn.config(relief=tk.SUNKEN, bg="#FFFF00")
-        self.root.config(cursor="crosshair")
-        self.root.after(100, self.start_screen_pick)
+            self.font_color = color[1];
+            self.color_btn.config(bg=self.font_color);
+            self.save_config();
+            self.update_canvas();
         
-    def start_screen_pick(self):
-        self.picker_window = tk.Toplevel(self.root)
-        self.picker_window.attributes("-fullscreen", True)
-        self.picker_window.attributes("-alpha", 0.01)
-        self.picker_window.attributes("-topmost", True)
-        self.picker_window.config(cursor="crosshair")
+def activate_dropper(self):
+        self.dropper_active = True;
+        self.dropper_status.set("Click anywhere on screen to pick color...");
+        self.dropper_btn.config(relief=tk.SUNKEN, bg="#FFFF00");
+        self.root.config(cursor="crosshair");
+        self.root.after(100, self.start_screen_pick);
         
-        self.picker_window.bind("<Button-1>", self.do_screen_pick)
-        self.picker_window.bind("<Escape>", self.cancel_dropper)
+def start_screen_pick(self):
+        self.picker_window = tk.Toplevel(self.root);
+        self.picker_window.attributes("-fullscreen", True);
+        self.picker_window.attributes("-alpha", 0.01);
+        self.picker_window.attributes("-topmost", True);
+        self.picker_window.config(cursor="crosshair");
         
-    def do_screen_pick(self, event):
-        x = self.picker_window.winfo_pointerx()
-        y = self.picker_window.winfo_pointery()
+        self.picker_window.bind("<Button-1>", self.do_screen_pick);
+        self.picker_window.bind("<Escape>", self.cancel_dropper);
         
-        self.picker_window.destroy()
+def do_screen_pick(self, event):
+        x = self.picker_window.winfo_pointerx();
+        y = self.picker_window.winfo_pointery();
+        
+        self.picker_window.destroy();
         
         try:
-            img = ImageGrab.grab(bbox=(x, y, x+1, y+1))
-            pixel = img.getpixel((0, 0))
+            img = ImageGrab.grab(bbox=(x, y, x+1, y+1));
+            pixel = img.getpixel((0, 0));
             
-            self.font_color = "#{:02x}{:02x}{:02x}".format(pixel[0], pixel[1], pixel[2])
-            self.color_btn.config(bg=self.font_color)
-            self.save_config()
-            self.update_canvas()
+            self.font_color = "#{:02x}{:02x}{:02x}".format(pixel[0], pixel[1], pixel[2]);
+            self.color_btn.config(bg=self.font_color);
+            self.save_config();
+            self.update_canvas();
         except Exception as e:
-            print(f"Error picking color: {e}")
+            print(f"Error picking color: {e}");
         
-        self.end_dropper()
+        self.end_dropper();
         
-    def cancel_dropper(self, event=None):
+def cancel_dropper(self, event=None):
         if hasattr(self, 'picker_window'):
-            self.picker_window.destroy()
-        self.end_dropper()
+            self.picker_window.destroy();
+        self.end_dropper();
         
-    def end_dropper(self):
-        self.dropper_active = False
-        self.dropper_status.set("")
-        self.dropper_btn.config(relief=tk.RAISED, bg="SystemButtonFace")
-        self.root.config(cursor="")
+def end_dropper(self):
+        self.dropper_active = False;
+        self.dropper_status.set("");
+        self.dropper_btn.config(relief=tk.RAISED, bg="SystemButtonFace");
+        self.root.config(cursor="");
         
-    def find_font_path(self, font_name):
+def find_font_path(self, font_name):
         """Find the font file path for a given font family name"""
         font_dirs = [
             "C:/Windows/Fonts",
             os.path.expanduser("~/AppData/Local/Microsoft/Windows/Fonts"),
-        ]
+        ];
         
-        extensions = ['.ttf', '.otf', '.TTF', '.OTF']
+        extensions = ['.ttf', '.otf', '.TTF', '.OTF'];
         
-        search_name = font_name.lower().replace(" ", "")
+        search_name = font_name.lower().replace(" ", "");
         
         font_mappings = {
             'arial': 'arial',
@@ -553,153 +639,152 @@ class TextOverlayApp:
             'calibri': 'calibri',
             'cambria': 'cambria',
             'consolas': 'consola',
-        }
+        };
         
-        mapped_name = font_mappings.get(search_name, search_name)
+        mapped_name = font_mappings.get(search_name, search_name);
         
         for font_dir in font_dirs:
             if os.path.exists(font_dir):
                 try:
                     for file in os.listdir(font_dir):
-                        file_lower = file.lower()
-                        file_base = os.path.splitext(file_lower)[0]
-                        
+                        file_lower = file.lower();
+                        file_base = os.path.splitext(file_lower)[0];
                         if file_base == mapped_name or file_base == search_name:
                             for ext in extensions:
                                 if file_lower.endswith(ext.lower()):
-                                    return os.path.join(font_dir, file)
+                                    return os.path.join(font_dir, file);
                         
                         if mapped_name in file_base or search_name in file_base:
                             for ext in extensions:
                                 if file_lower.endswith(ext.lower()):
-                                    return os.path.join(font_dir, file)
+                                    return os.path.join(font_dir, file);
                 except:
-                    pass
+                    pass;
         
         for font_dir in font_dirs:
             if os.path.exists(font_dir):
                 try:
                     for file in os.listdir(font_dir):
-                        file_lower = file.lower()
+                        file_lower = file.lower();
                         for word in font_name.lower().split():
                             if len(word) > 2 and word in file_lower:
                                 for ext in extensions:
                                     if file_lower.endswith(ext.lower()):
-                                        return os.path.join(font_dir, file)
+                                        return os.path.join(font_dir, file);
                 except:
-                    pass
+                    pass;
         
-        return None
+        return None;
         
-    def export_png(self):
+def export_png(self):
         path = filedialog.asksaveasfilename(
             defaultextension=".png",
             filetypes=[("PNG files", "*.png")],
             title="Export as PNG"
-        )
+        );
         
         if not path:
-            return
+            return;
             
-        img = Image.new("RGBA", (1920, 1080), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(img)
+        img = Image.new("RGBA", (1920, 1080), (0, 0, 0, 0));
+        draw = ImageDraw.Draw(img);
         
-        font_path = self.find_font_path(self.font_family)
+        font_path = self.find_font_path(self.font_family);
         
         try:
             if font_path and os.path.exists(font_path):
-                pil_font = ImageFont.truetype(font_path, self.font_size)
+                pil_font = ImageFont.truetype(font_path, self.font_size);
             else:
-                fallbacks = ["arial.ttf", "Arial.ttf", "segoeui.ttf", "tahoma.ttf"]
-                pil_font = None
+                fallbacks = ["arial.ttf", "Arial.ttf", "segoeui.ttf", "tahoma.ttf"];
+                pil_font = None;
                 for fb in fallbacks:
                     try:
-                        pil_font = ImageFont.truetype(fb, self.font_size)
-                        break
+                        pil_font = ImageFont.truetype(fb, self.font_size);
+                        break;
                     except:
-                        continue
+                        continue;
                 
                 if pil_font is None:
                     try:
-                        pil_font = ImageFont.truetype("C:/Windows/Fonts/arial.ttf", self.font_size)
+                        pil_font = ImageFont.truetype("C:/Windows/Fonts/arial.ttf", self.font_size);
                     except:
-                        pil_font = ImageFont.load_default()
-                        
-                self.dropper_status.set(f"Warning: Using fallback font ('{self.font_family}' not found)")
-                self.root.after(3000, lambda: self.dropper_status.set(""))
+                        pil_font = ImageFont.load_default();
+                
+                self.dropper_status.set(f"Warning: Using fallback font ('{self.font_family}' not found)");
+                self.root.after(3000, lambda: self.dropper_status.set(""));
         except Exception as e:
-            pil_font = ImageFont.load_default()
-            self.dropper_status.set(f"Font error: {e}")
-            self.root.after(3000, lambda: self.dropper_status.set(""))
+            pil_font = ImageFont.load_default();
+            self.dropper_status.set(f"Font error: {e}");
+            self.root.after(3000, lambda: self.dropper_status.set(""));
         
-        hex_color = self.font_color.lstrip('#')
-        rgb = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
-        rgba = rgb + (255,)
+        hex_color = self.font_color.lstrip('#');
+        rgb = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4));
+        rgba = rgb + (255,);
         
         # Get lines
-        lines = self.text_content.split('\n')
+        lines = self.text_content.split('\n');
         if self.flip_h:
-            lines = [line[::-1] for line in lines]
+            lines = [line[::-1] for line in lines];
         
         # Calculate line height
-        bbox = draw.textbbox((0, 0), "Mg", font=pil_font)
-        line_height = (bbox[3] - bbox[1]) * self.line_spacing
+        bbox = draw.textbbox((0, 0), "Mg", font=pil_font);
+        line_height = (bbox[3] - bbox[1]) * self.line_spacing;
         
         if self.vertical_stack:
             # Vertical stacking
-            all_chars = list(self.text_content.replace('\n', ''))
+            all_chars = list(self.text_content.replace('\n', ''));
             if self.flip_h:
-                all_chars = all_chars[::-1]
+                all_chars = all_chars[::-1];
             
-            total_height = line_height * len(all_chars)
-            start_y = self.text_y - total_height / 2
+            total_height = line_height * len(all_chars);
+            start_y = self.text_y - total_height / 2;
             
             for i, char in enumerate(all_chars):
-                char_bbox = draw.textbbox((0, 0), char, font=pil_font)
-                char_width = char_bbox[2] - char_bbox[0]
-                char_x = self.text_x - char_width / 2
-                char_y = start_y + i * line_height
-                draw.text((char_x, char_y), char, font=pil_font, fill=rgba)
+                char_bbox = draw.textbbox((0, 0), char, font=pil_font);
+                char_width = char_bbox[2] - char_bbox[0];
+                char_x = self.text_x - char_width / 2;
+                char_y = start_y + i * line_height;
+                draw.text((char_x, char_y), char, font=pil_font, fill=rgba);
         else:
             # Multi-line text
-            total_height = line_height * len(lines)
-            start_y = self.text_y - total_height / 2
+            total_height = line_height * len(lines);
+            start_y = self.text_y - total_height / 2;
             
             # Calculate max width for alignment
-            line_widths = []
+            line_widths = [];
             for line in lines:
                 if line:
-                    bbox = draw.textbbox((0, 0), line, font=pil_font)
-                    line_widths.append(bbox[2] - bbox[0])
+                    bbox = draw.textbbox((0, 0), line, font=pil_font);
+                    line_widths.append(bbox[2] - bbox[0]);
                 else:
-                    line_widths.append(0)
+                    line_widths.append(0);
             
-            max_width = max(line_widths) if line_widths else 0
+            max_width = max(line_widths) if line_widths else 0;
             
             for i, line in enumerate(lines):
                 if not line:
-                    continue
-                    
-                line_bbox = draw.textbbox((0, 0), line, font=pil_font)
-                line_width = line_bbox[2] - line_bbox[0]
-                line_y = start_y + i * line_height
+                    continue;
+                
+                line_bbox = draw.textbbox((0, 0), line, font=pil_font);
+                line_width = line_bbox[2] - line_bbox[0];
+                line_y = start_y + i * line_height;
                 
                 if self.text_align == "left":
-                    line_x = self.text_x - max_width / 2
+                    line_x = self.text_x - max_width / 2;
                 elif self.text_align == "right":
-                    line_x = self.text_x + max_width / 2 - line_width
+                    line_x = self.text_x + max_width / 2 - line_width;
                 else:  # center
-                    line_x = self.text_x - line_width / 2
+                    line_x = self.text_x - line_width / 2;
                 
-                draw.text((line_x, line_y), line, font=pil_font, fill=rgba)
+                draw.text((line_x, line_y), line, font=pil_font, fill=rgba);
         
-        img.save(path, "PNG")
+        img.save(path, "PNG");
         
-        self.dropper_status.set(f"Exported: {os.path.basename(path)}")
-        self.root.after(3000, lambda: self.dropper_status.set(""))
+        self.dropper_status.set(f"Exported: {os.path.basename(path)}");
+        self.root.after(3000, lambda: self.dropper_status.set(""));
 
 
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = TextOverlayApp(root)
-    root.mainloop()
+    root = tk.Tk();
+    app = TextOverlayApp(root);
+    root.mainloop();
