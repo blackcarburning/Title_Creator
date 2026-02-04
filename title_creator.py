@@ -1,0 +1,705 @@
+import tkinter as tk
+from tkinter import ttk, font, colorchooser, filedialog
+from PIL import Image, ImageDraw, ImageFont, ImageGrab
+import os
+import json
+
+
+class TextOverlayApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Text Overlay Creator")
+        self.root.geometry("1200x800")
+        
+        self.config_file = os.path.join(os.path.expanduser("~"), ".text_overlay_config.json")
+        
+        # Text properties
+        self.text_content = "Double-click to edit\nLine 2\nLine 3"
+        self.font_family = "Arial"
+        self.font_size = 72
+        self.font_color = "#FFFFFF"
+        self.text_x = 960
+        self.text_y = 540
+        self.flip_h = False
+        self.vertical_stack = False
+        self.text_align = "center"  # left, center, right
+        self.line_spacing = 1.0
+        
+        # Load saved settings
+        self.load_config()
+        
+        # Canvas scaling
+        self.scale = 1.0
+        self.canvas_width = 1920
+        self.canvas_height = 1080
+        
+        # Dragging state
+        self.dragging = False
+        self.resizing = False
+        self.drag_start_x = 0
+        self.drag_start_y = 0
+        self.resize_handle = None
+        
+        # Dropper state
+        self.dropper_active = False
+        
+        self.setup_ui()
+        self.root.bind("<Configure>", self.on_resize)
+        self.root.after(100, self.fit_canvas)
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+        
+    def load_config(self):
+        """Load saved configuration"""
+        try:
+            if os.path.exists(self.config_file):
+                with open(self.config_file, 'r') as f:
+                    config = json.load(f)
+                    self.font_family = config.get('font_family', self.font_family)
+                    self.font_size = config.get('font_size', self.font_size)
+                    self.font_color = config.get('font_color', self.font_color)
+                    self.text_align = config.get('text_align', self.text_align)
+                    self.line_spacing = config.get('line_spacing', self.line_spacing)
+        except:
+            pass
+            
+    def save_config(self):
+        """Save configuration"""
+        try:
+            config = {
+                'font_family': self.font_family,
+                'font_size': self.font_size,
+                'font_color': self.font_color,
+                'text_align': self.text_align,
+                'line_spacing': self.line_spacing
+            }
+            with open(self.config_file, 'w') as f:
+                json.dump(config, f)
+        except:
+            pass
+            
+    def on_close(self):
+        """Handle window close"""
+        self.save_config()
+        self.root.destroy()
+        
+    def setup_ui(self):
+        # Main container
+        main = ttk.Frame(self.root, padding="5")
+        main.pack(fill=tk.BOTH, expand=True)
+        
+        # Control panel
+        controls = ttk.LabelFrame(main, text="Controls", padding="10")
+        controls.pack(fill=tk.X, pady=(0, 5))
+        
+        # Row 1: Font selection
+        row1 = ttk.Frame(controls)
+        row1.pack(fill=tk.X, pady=2)
+        
+        ttk.Label(row1, text="Font:").pack(side=tk.LEFT, padx=(0, 5))
+        
+        available_fonts = sorted(list(font.families()))
+        self.font_var = tk.StringVar(value=self.font_family)
+        font_combo = ttk.Combobox(row1, textvariable=self.font_var, values=available_fonts, width=25)
+        font_combo.pack(side=tk.LEFT, padx=5)
+        font_combo.bind("<<ComboboxSelected>>", lambda e: self.on_font_change())
+        
+        ttk.Label(row1, text="Size:").pack(side=tk.LEFT, padx=(15, 5))
+        self.size_var = tk.IntVar(value=self.font_size)
+        size_spin = ttk.Spinbox(row1, from_=8, to=500, textvariable=self.size_var, width=5, command=self.on_size_change)
+        size_spin.pack(side=tk.LEFT, padx=5)
+        size_spin.bind("<Return>", lambda e: self.on_size_change())
+        
+        ttk.Label(row1, text="Color:").pack(side=tk.LEFT, padx=(15, 5))
+        self.color_btn = tk.Button(row1, width=4, bg=self.font_color, command=self.pick_color)
+        self.color_btn.pack(side=tk.LEFT, padx=5)
+        
+        self.dropper_btn = tk.Button(row1, text="Dropper", command=self.activate_dropper, width=7)
+        self.dropper_btn.pack(side=tk.LEFT, padx=5)
+        
+        tk.Button(row1, text="Export PNG", command=self.export_png, font=("Arial", 10, "bold"), 
+                  bg="#4CAF50", fg="white", width=10).pack(side=tk.RIGHT, padx=5)
+        
+        # Row 2: Alignment, spacing, flip options
+        row2 = ttk.Frame(controls)
+        row2.pack(fill=tk.X, pady=2)
+        
+        ttk.Label(row2, text="Align:").pack(side=tk.LEFT, padx=(0, 5))
+        self.align_var = tk.StringVar(value=self.text_align)
+        align_frame = ttk.Frame(row2)
+        align_frame.pack(side=tk.LEFT, padx=5)
+        
+        self.align_left_btn = tk.Button(align_frame, text="◀", width=3, command=lambda: self.set_align("left"))
+        self.align_left_btn.pack(side=tk.LEFT)
+        self.align_center_btn = tk.Button(align_frame, text="●", width=3, command=lambda: self.set_align("center"))
+        self.align_center_btn.pack(side=tk.LEFT)
+        self.align_right_btn = tk.Button(align_frame, text="▶", width=3, command=lambda: self.set_align("right"))
+        self.align_right_btn.pack(side=tk.LEFT)
+        self.update_align_buttons()
+        
+        ttk.Label(row2, text="Line Spacing:").pack(side=tk.LEFT, padx=(15, 5))
+        self.spacing_var = tk.DoubleVar(value=self.line_spacing)
+        spacing_spin = ttk.Spinbox(row2, from_=0.5, to=3.0, increment=0.1, textvariable=self.spacing_var, width=5, command=self.on_spacing_change)
+        spacing_spin.pack(side=tk.LEFT, padx=5)
+        spacing_spin.bind("<Return>", lambda e: self.on_spacing_change())
+        
+        ttk.Separator(row2, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=15, fill=tk.Y)
+        
+        self.flip_h_btn = tk.Button(row2, text="Flip H", command=self.toggle_flip_h, width=6)
+        self.flip_h_btn.pack(side=tk.LEFT, padx=5)
+        
+        self.vertical_btn = tk.Button(row2, text="Vertical", command=self.toggle_vertical, width=7)
+        self.vertical_btn.pack(side=tk.LEFT, padx=5)
+        
+        ttk.Button(row2, text="Center", command=self.center_text).pack(side=tk.LEFT, padx=15)
+        
+        # Row 3: Text input (multi-line)
+        row3 = ttk.Frame(controls)
+        row3.pack(fill=tk.X, pady=5)
+        
+        ttk.Label(row3, text="Text:").pack(side=tk.LEFT, padx=(0, 5), anchor=tk.N)
+        
+        text_frame = ttk.Frame(row3)
+        text_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        
+        self.text_entry = tk.Text(text_frame, height=4, width=80, wrap=tk.WORD)
+        self.text_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.text_entry.insert("1.0", self.text_content)
+        self.text_entry.bind("<KeyRelease>", lambda e: self.on_text_change())
+        
+        scrollbar = ttk.Scrollbar(text_frame, orient=tk.VERTICAL, command=self.text_entry.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.text_entry.config(yscrollcommand=scrollbar.set)
+        
+        # Row 4: Position info
+        row4 = ttk.Frame(controls)
+        row4.pack(fill=tk.X, pady=2)
+        
+        self.pos_var = tk.StringVar(value=f"Position: X={self.text_x}, Y={self.text_y}")
+        ttk.Label(row4, textvariable=self.pos_var).pack(side=tk.LEFT)
+        
+        self.dropper_status = tk.StringVar(value="")
+        ttk.Label(row4, textvariable=self.dropper_status, foreground="blue").pack(side=tk.RIGHT)
+        
+        # Canvas frame
+        canvas_frame = ttk.LabelFrame(main, text="Canvas (1920x1080) - Checkerboard = Transparent", padding="5")
+        canvas_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Canvas container for centering
+        self.canvas_container = ttk.Frame(canvas_frame)
+        self.canvas_container.pack(fill=tk.BOTH, expand=True)
+        
+        # Canvas
+        self.canvas = tk.Canvas(self.canvas_container, bg="#333333", highlightthickness=1, highlightbackground="#666666")
+        self.canvas.pack(expand=True)
+        
+        # Bind mouse events
+        self.canvas.bind("<Button-1>", self.on_mouse_down)
+        self.canvas.bind("<B1-Motion>", self.on_mouse_drag)
+        self.canvas.bind("<ButtonRelease-1>", self.on_mouse_up)
+        self.canvas.bind("<Double-Button-1>", self.on_double_click)
+        
+    def set_align(self, align):
+        self.text_align = align
+        self.update_align_buttons()
+        self.save_config()
+        self.update_canvas()
+        
+    def update_align_buttons(self):
+        for btn, val in [(self.align_left_btn, "left"), (self.align_center_btn, "center"), (self.align_right_btn, "right")]:
+            if self.text_align == val:
+                btn.config(relief=tk.SUNKEN, bg="#AADDFF")
+            else:
+                btn.config(relief=tk.RAISED, bg="SystemButtonFace")
+                
+    def on_spacing_change(self):
+        try:
+            self.line_spacing = float(self.spacing_var.get())
+            self.line_spacing = max(0.5, min(3.0, self.line_spacing))
+            self.save_config()
+            self.update_canvas()
+        except:
+            pass
+        
+    def on_resize(self, event=None):
+        if hasattr(self, '_resize_after_id') and self._resize_after_id is not None:
+            try:
+                self.root.after_cancel(self._resize_after_id)
+            except:
+                pass
+        self._resize_after_id = self.root.after(50, self.fit_canvas)
+        
+    def fit_canvas(self):
+        self.canvas_container.update_idletasks()
+        available_width = self.canvas_container.winfo_width() - 20
+        available_height = self.canvas_container.winfo_height() - 20
+        
+        if available_width < 100 or available_height < 100:
+            return
+        
+        scale_x = available_width / 1920
+        scale_y = available_height / 1080
+        self.scale = min(scale_x, scale_y)
+        
+        display_width = int(1920 * self.scale)
+        display_height = int(1080 * self.scale)
+        
+        self.canvas.config(width=display_width, height=display_height)
+        
+        self.update_canvas()
+        
+    def draw_checkerboard(self):
+        self.canvas.delete("checker")
+        checker_size = max(10, int(20 * self.scale))
+        
+        display_width = int(1920 * self.scale)
+        display_height = int(1080 * self.scale)
+        
+        for y in range(0, display_height, checker_size):
+            for x in range(0, display_width, checker_size):
+                color = "#CCCCCC" if (x // checker_size + y // checker_size) % 2 == 0 else "#999999"
+                self.canvas.create_rectangle(x, y, x + checker_size, y + checker_size, 
+                                              fill=color, outline="", tags="checker")
+        
+    def update_canvas(self):
+        self.draw_checkerboard()
+        
+        self.canvas.delete("text_element")
+        self.canvas.delete("text_box")
+        self.canvas.delete("resize_handle")
+        
+        scaled_x = self.text_x * self.scale
+        scaled_y = self.text_y * self.scale
+        scaled_size = max(8, int(self.font_size * self.scale))
+        
+        try:
+            tk_font = font.Font(family=self.font_family, size=scaled_size)
+        except:
+            tk_font = font.Font(family="Arial", size=scaled_size)
+        
+        # Get lines
+        lines = self.text_content.split('\n')
+        if self.flip_h:
+            lines = [line[::-1] for line in lines]
+        
+        line_height = tk_font.metrics('linespace') * self.line_spacing
+        total_height = line_height * len(lines)
+        start_y = scaled_y - total_height / 2 + line_height / 2
+        
+        if self.vertical_stack:
+            # Vertical stacking - each character on its own line
+            all_chars = list(self.text_content.replace('\n', ''))
+            if self.flip_h:
+                all_chars = all_chars[::-1]
+            
+            char_height = tk_font.metrics('linespace') * self.line_spacing
+            total_char_height = char_height * len(all_chars)
+            char_start_y = scaled_y - total_char_height / 2 + char_height / 2
+            
+            for i, char in enumerate(all_chars):
+                char_y = char_start_y + i * char_height
+                self.canvas.create_text(
+                    scaled_x, char_y,
+                    text=char,
+                    font=tk_font,
+                    fill=self.font_color,
+                    anchor="center",
+                    tags="text_element"
+                )
+        else:
+            # Normal multi-line text
+            for i, line in enumerate(lines):
+                line_y = start_y + i * line_height
+                
+                if self.text_align == "left":
+                    anchor = "w"
+                    line_x = scaled_x
+                elif self.text_align == "right":
+                    anchor = "e"
+                    line_x = scaled_x
+                else:
+                    anchor = "center"
+                    line_x = scaled_x
+                
+                self.canvas.create_text(
+                    line_x, line_y,
+                    text=line,
+                    font=tk_font,
+                    fill=self.font_color,
+                    anchor=anchor,
+                    tags="text_element"
+                )
+        
+        bbox = self.canvas.bbox("text_element")
+        if bbox:
+            x1, y1, x2, y2 = bbox
+            padding = 5
+            
+            self.canvas.create_rectangle(
+                x1 - padding, y1 - padding, x2 + padding, y2 + padding,
+                outline="#00AAFF", width=2, dash=(5, 5), tags="text_box"
+            )
+            
+            handle_size = 8
+            handles = [
+                (x1 - padding, y1 - padding, "nw"),
+                (x2 + padding, y1 - padding, "ne"),
+                (x1 - padding, y2 + padding, "sw"),
+                (x2 + padding, y2 + padding, "se"),
+            ]
+            
+            for hx, hy, corner in handles:
+                self.canvas.create_rectangle(
+                    hx - handle_size//2, hy - handle_size//2,
+                    hx + handle_size//2, hy + handle_size//2,
+                    fill="#00AAFF", outline="white", tags=f"resize_handle {corner}"
+                )
+        
+        status = ""
+        if self.flip_h:
+            status += " [H-Flipped]"
+        if self.vertical_stack:
+            status += " [Vertical]"
+        line_count = len(self.text_content.split('\n'))
+        self.pos_var.set(f"Position: X={self.text_x}, Y={self.text_y} | Size: {self.font_size}pt | Lines: {line_count}{status}")
+        
+    def toggle_flip_h(self):
+        self.flip_h = not self.flip_h
+        self.flip_h_btn.config(relief=tk.SUNKEN if self.flip_h else tk.RAISED,
+                               bg="#AADDFF" if self.flip_h else "SystemButtonFace")
+        self.update_canvas()
+        
+    def toggle_vertical(self):
+        self.vertical_stack = not self.vertical_stack
+        self.vertical_btn.config(relief=tk.SUNKEN if self.vertical_stack else tk.RAISED,
+                                 bg="#AADDFF" if self.vertical_stack else "SystemButtonFace")
+        self.update_canvas()
+        
+    def on_mouse_down(self, event):
+        if self.dropper_active:
+            return
+            
+        cx = event.x
+        cy = event.y
+        
+        items = self.canvas.find_overlapping(cx-5, cy-5, cx+5, cy+5)
+        for item in items:
+            tags = self.canvas.gettags(item)
+            if "resize_handle" in tags:
+                self.resizing = True
+                for tag in tags:
+                    if tag in ["nw", "ne", "sw", "se"]:
+                        self.resize_handle = tag
+                        break
+                self.drag_start_x = cx
+                self.drag_start_y = cy
+                return
+        
+        text_bbox = self.canvas.bbox("text_element")
+        if text_bbox:
+            x1, y1, x2, y2 = text_bbox
+            if x1 <= cx <= x2 and y1 <= cy <= y2:
+                self.dragging = True
+                self.drag_start_x = cx - (self.text_x * self.scale)
+                self.drag_start_y = cy - (self.text_y * self.scale)
+                
+    def on_mouse_drag(self, event):
+        if self.dropper_active:
+            return
+            
+        cx = event.x
+        cy = event.y
+        
+        if self.dragging:
+            self.text_x = int((cx - self.drag_start_x) / self.scale)
+            self.text_y = int((cy - self.drag_start_y) / self.scale)
+            
+            self.text_x = max(0, min(1920, self.text_x))
+            self.text_y = max(0, min(1080, self.text_y))
+            
+            self.update_canvas()
+            
+        elif self.resizing:
+            dx = cx - self.drag_start_x
+            dy = cy - self.drag_start_y
+            
+            distance = (dx + dy) / 2
+            
+            if self.resize_handle in ["se", "ne"]:
+                new_size = self.font_size + int(distance / (5 * self.scale))
+            else:
+                new_size = self.font_size - int(distance / (5 * self.scale))
+            
+            new_size = max(8, min(500, new_size))
+            
+            if new_size != self.font_size:
+                self.font_size = new_size
+                self.size_var.set(self.font_size)
+                self.drag_start_x = cx
+                self.drag_start_y = cy
+                self.update_canvas()
+                
+    def on_mouse_up(self, event):
+        self.dragging = False
+        self.resizing = False
+        self.resize_handle = None
+        
+    def on_double_click(self, event):
+        self.text_entry.focus_set()
+        
+    def on_font_change(self):
+        self.font_family = self.font_var.get()
+        self.save_config()
+        self.update_canvas()
+        
+    def on_size_change(self):
+        try:
+            self.font_size = int(self.size_var.get())
+            self.font_size = max(8, min(500, self.font_size))
+            self.save_config()
+            self.update_canvas()
+        except:
+            pass
+            
+    def on_text_change(self):
+        self.text_content = self.text_entry.get("1.0", tk.END).rstrip('\n')
+        self.update_canvas()
+        
+    def center_text(self):
+        self.text_x = 960
+        self.text_y = 540
+        self.update_canvas()
+        
+    def pick_color(self):
+        color = colorchooser.askcolor(color=self.font_color, title="Choose Text Color")
+        if color[1]:
+            self.font_color = color[1]
+            self.color_btn.config(bg=self.font_color)
+            self.save_config()
+            self.update_canvas()
+            
+    def activate_dropper(self):
+        self.dropper_active = True
+        self.dropper_status.set("Click anywhere on screen to pick color...")
+        self.dropper_btn.config(relief=tk.SUNKEN, bg="#FFFF00")
+        self.root.config(cursor="crosshair")
+        self.root.after(100, self.start_screen_pick)
+        
+    def start_screen_pick(self):
+        self.picker_window = tk.Toplevel(self.root)
+        self.picker_window.attributes("-fullscreen", True)
+        self.picker_window.attributes("-alpha", 0.01)
+        self.picker_window.attributes("-topmost", True)
+        self.picker_window.config(cursor="crosshair")
+        
+        self.picker_window.bind("<Button-1>", self.do_screen_pick)
+        self.picker_window.bind("<Escape>", self.cancel_dropper)
+        
+    def do_screen_pick(self, event):
+        x = self.picker_window.winfo_pointerx()
+        y = self.picker_window.winfo_pointery()
+        
+        self.picker_window.destroy()
+        
+        try:
+            img = ImageGrab.grab(bbox=(x, y, x+1, y+1))
+            pixel = img.getpixel((0, 0))
+            
+            self.font_color = "#{:02x}{:02x}{:02x}".format(pixel[0], pixel[1], pixel[2])
+            self.color_btn.config(bg=self.font_color)
+            self.save_config()
+            self.update_canvas()
+        except Exception as e:
+            print(f"Error picking color: {e}")
+        
+        self.end_dropper()
+        
+    def cancel_dropper(self, event=None):
+        if hasattr(self, 'picker_window'):
+            self.picker_window.destroy()
+        self.end_dropper()
+        
+    def end_dropper(self):
+        self.dropper_active = False
+        self.dropper_status.set("")
+        self.dropper_btn.config(relief=tk.RAISED, bg="SystemButtonFace")
+        self.root.config(cursor="")
+        
+    def find_font_path(self, font_name):
+        """Find the font file path for a given font family name"""
+        font_dirs = [
+            "C:/Windows/Fonts",
+            os.path.expanduser("~/AppData/Local/Microsoft/Windows/Fonts"),
+        ]
+        
+        extensions = ['.ttf', '.otf', '.TTF', '.OTF']
+        
+        search_name = font_name.lower().replace(" ", "")
+        
+        font_mappings = {
+            'arial': 'arial',
+            'arialblack': 'ariblk',
+            'timesnewroman': 'times',
+            'couriernew': 'cour',
+            'verdana': 'verdana',
+            'tahoma': 'tahoma',
+            'georgia': 'georgia',
+            'trebuchetms': 'trebuc',
+            'impactregular': 'impact',
+            'impact': 'impact',
+            'comicsansms': 'comic',
+            'lucidaconsole': 'lucon',
+            'palatinolinotype': 'pala',
+            'segoeui': 'segoeui',
+            'calibri': 'calibri',
+            'cambria': 'cambria',
+            'consolas': 'consola',
+        }
+        
+        mapped_name = font_mappings.get(search_name, search_name)
+        
+        for font_dir in font_dirs:
+            if os.path.exists(font_dir):
+                try:
+                    for file in os.listdir(font_dir):
+                        file_lower = file.lower()
+                        file_base = os.path.splitext(file_lower)[0]
+                        
+                        if file_base == mapped_name or file_base == search_name:
+                            for ext in extensions:
+                                if file_lower.endswith(ext.lower()):
+                                    return os.path.join(font_dir, file)
+                        
+                        if mapped_name in file_base or search_name in file_base:
+                            for ext in extensions:
+                                if file_lower.endswith(ext.lower()):
+                                    return os.path.join(font_dir, file)
+                except:
+                    pass
+        
+        for font_dir in font_dirs:
+            if os.path.exists(font_dir):
+                try:
+                    for file in os.listdir(font_dir):
+                        file_lower = file.lower()
+                        for word in font_name.lower().split():
+                            if len(word) > 2 and word in file_lower:
+                                for ext in extensions:
+                                    if file_lower.endswith(ext.lower()):
+                                        return os.path.join(font_dir, file)
+                except:
+                    pass
+        
+        return None
+        
+    def export_png(self):
+        path = filedialog.asksaveasfilename(
+            defaultextension=".png",
+            filetypes=[("PNG files", "*.png")],
+            title="Export as PNG"
+        )
+        
+        if not path:
+            return
+            
+        img = Image.new("RGBA", (1920, 1080), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        
+        font_path = self.find_font_path(self.font_family)
+        
+        try:
+            if font_path and os.path.exists(font_path):
+                pil_font = ImageFont.truetype(font_path, self.font_size)
+            else:
+                fallbacks = ["arial.ttf", "Arial.ttf", "segoeui.ttf", "tahoma.ttf"]
+                pil_font = None
+                for fb in fallbacks:
+                    try:
+                        pil_font = ImageFont.truetype(fb, self.font_size)
+                        break
+                    except:
+                        continue
+                
+                if pil_font is None:
+                    try:
+                        pil_font = ImageFont.truetype("C:/Windows/Fonts/arial.ttf", self.font_size)
+                    except:
+                        pil_font = ImageFont.load_default()
+                        
+                self.dropper_status.set(f"Warning: Using fallback font ('{self.font_family}' not found)")
+                self.root.after(3000, lambda: self.dropper_status.set(""))
+        except Exception as e:
+            pil_font = ImageFont.load_default()
+            self.dropper_status.set(f"Font error: {e}")
+            self.root.after(3000, lambda: self.dropper_status.set(""))
+        
+        hex_color = self.font_color.lstrip('#')
+        rgb = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+        rgba = rgb + (255,)
+        
+        # Get lines
+        lines = self.text_content.split('\n')
+        if self.flip_h:
+            lines = [line[::-1] for line in lines]
+        
+        # Calculate line height
+        bbox = draw.textbbox((0, 0), "Mg", font=pil_font)
+        line_height = (bbox[3] - bbox[1]) * self.line_spacing
+        
+        if self.vertical_stack:
+            # Vertical stacking
+            all_chars = list(self.text_content.replace('\n', ''))
+            if self.flip_h:
+                all_chars = all_chars[::-1]
+            
+            total_height = line_height * len(all_chars)
+            start_y = self.text_y - total_height / 2
+            
+            for i, char in enumerate(all_chars):
+                char_bbox = draw.textbbox((0, 0), char, font=pil_font)
+                char_width = char_bbox[2] - char_bbox[0]
+                char_x = self.text_x - char_width / 2
+                char_y = start_y + i * line_height
+                draw.text((char_x, char_y), char, font=pil_font, fill=rgba)
+        else:
+            # Multi-line text
+            total_height = line_height * len(lines)
+            start_y = self.text_y - total_height / 2
+            
+            # Calculate max width for alignment
+            line_widths = []
+            for line in lines:
+                if line:
+                    bbox = draw.textbbox((0, 0), line, font=pil_font)
+                    line_widths.append(bbox[2] - bbox[0])
+                else:
+                    line_widths.append(0)
+            
+            max_width = max(line_widths) if line_widths else 0
+            
+            for i, line in enumerate(lines):
+                if not line:
+                    continue
+                    
+                line_bbox = draw.textbbox((0, 0), line, font=pil_font)
+                line_width = line_bbox[2] - line_bbox[0]
+                line_y = start_y + i * line_height
+                
+                if self.text_align == "left":
+                    line_x = self.text_x - max_width / 2
+                elif self.text_align == "right":
+                    line_x = self.text_x + max_width / 2 - line_width
+                else:  # center
+                    line_x = self.text_x - line_width / 2
+                
+                draw.text((line_x, line_y), line, font=pil_font, fill=rgba)
+        
+        img.save(path, "PNG")
+        
+        self.dropper_status.set(f"Exported: {os.path.basename(path)}")
+        self.root.after(3000, lambda: self.dropper_status.set(""))
+
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = TextOverlayApp(root)
+    root.mainloop()
